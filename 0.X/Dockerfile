@@ -2,7 +2,7 @@ FROM alpine:3.7
 MAINTAINER Preetha Appan <preetha@hashicorp.com> (@preetapan)
 
 # This is the release of Consul to pull in.
-ENV CONSUL_VERSION=1.0.6
+ENV CONSUL_VERSION=1.2.1
 
 # This is the location of the releases.
 ENV HASHICORP_RELEASES=https://releases.hashicorp.com
@@ -22,7 +22,9 @@ RUN apk add --no-cache ca-certificates curl dumb-init gnupg libcap openssl su-ex
     cd /tmp && \
     rm -rf /tmp/build && \
     apk del gnupg openssl && \
-    rm -rf /root/.gnupg
+    rm -rf /root/.gnupg && \
+# tiny smoke test to ensure the binary we downloaded runs
+    consul version
 
 # The /consul/data dir is used by Consul to store state. The agent will be started
 # with /consul/config as the configuration directory so you can add additional
@@ -30,6 +32,10 @@ RUN apk add --no-cache ca-certificates curl dumb-init gnupg libcap openssl su-ex
 RUN mkdir -p /consul/data && \
     mkdir -p /consul/config && \
     chown -R consul:consul /consul
+
+# set up nsswitch.conf for Go's "netgo" implementation which is used by Consul,
+# otherwise DNS supercedes the container's hosts file, which we don't want.
+RUN test -e /etc/nsswitch.conf || echo 'hosts: files dns' > /etc/nsswitch.conf
 
 # Expose the consul data directory as a volume since there's mutable state in there.
 VOLUME /consul/data
